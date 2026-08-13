@@ -248,4 +248,4 @@ async def on_member_join(member: discord.Member):
         logger.error(f"Error in welcome module: {e}")
 
 def setup_welcomer(bot: discord.Client):
-    bot.add_listener(on_member_join, 'on_member_join')
+    bot.event(on_member_join)
