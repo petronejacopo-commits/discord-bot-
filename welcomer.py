@@ -208,13 +208,19 @@ async def on_member_join(member: discord.Member):
         ping_role_id = await db.get_config(guild_id, "welcome_ping_role")
         ping_user_id = await db.get_config(guild_id, "welcome_ping_user")
 
-        content_parts = [member.mention]
+        content_parts = []
         if ping_role_id:
             content_parts.append(f"<@&{ping_role_id}>")
         if ping_user_id:
             content_parts.append(f"<@{ping_user_id}>")
 
-        content = " ".join(content_parts)
+        ping_text = " ".join(content_parts)
+        if ping_text:
+            ping_text += "\n"
+
+        welcome_text = f"Benvenuto {member.mention} su 𝘽𝙍𝙊𝙏𝙃𝙀𝙍𝙃𝙊𝙊𝘿 𝙊𝙍𝙄𝙂𝙄𝙉𝙎! Sei il {member.guild.member_count}° membro! Ricordati di leggere il regolamento."
+        content = ping_text + welcome_text
+
         allowed_mentions = discord.AllowedMentions(users=True, roles=True, everyone=False)
 
         if use_card and PIL_AVAILABLE:

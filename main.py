@@ -62,9 +62,9 @@ class BrotherhoodBot(discord.Client):
                     assigned_to = ticket.get("assigned_to")
                     if assigned_to:
                         # Update view UI elements if it's assigned
-                        view.assign_btn.label = "Rilascia"
-                        view.assign_btn.emoji = "🔄"
-                        view.assign_btn.style = discord.ButtonStyle.secondary
+                        view.btn_assign.label = "Rilascia"
+                        view.btn_assign.emoji = "🔄"
+                        view.btn_assign.style = discord.ButtonStyle.secondary
 
                     self.add_view(view, message_id=None) # message_id none listens to custom ids system-wide
                     restored_count += 1

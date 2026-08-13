@@ -285,16 +285,29 @@ class TicketControlView(discord.ui.View):
         self.category = category
         self.priority = priority
 
-        # Load custom IDs to ensure persistence
-        self.close_btn.custom_id = f"tc_close_{channel_id}"
-        self.assign_btn.custom_id = f"tc_assign_{channel_id}"
-        self.priority_btn.custom_id = f"tc_prio_{channel_id}"
-        self.add_user_btn.custom_id = f"tc_add_{channel_id}"
-        self.remove_user_btn.custom_id = f"tc_rem_{channel_id}"
-        self.transcript_btn.custom_id = f"tc_trans_{channel_id}"
+        self.btn_close = discord.ui.Button(label="Chiudi", emoji="🔒", style=discord.ButtonStyle.secondary, row=0, custom_id=f"tc_close_{channel_id}")
+        self.btn_close.callback = self.close_btn
+        self.add_item(self.btn_close)
 
-        # We must sync state (assigned vs unassigned) based on what's in DB if restoring
-        # We will do this gracefully in the on_ready loop, but for init we can just provide base setup
+        self.btn_assign = discord.ui.Button(label="Prendi in carico", emoji="🙋", style=discord.ButtonStyle.primary, row=0, custom_id=f"tc_assign_{channel_id}")
+        self.btn_assign.callback = self.assign_btn
+        self.add_item(self.btn_assign)
+
+        self.btn_priority = discord.ui.Button(label="Priorità", emoji="⭐", style=discord.ButtonStyle.secondary, row=0, custom_id=f"tc_prio_{channel_id}")
+        self.btn_priority.callback = self.priority_btn
+        self.add_item(self.btn_priority)
+
+        self.btn_add_user = discord.ui.Button(label="Aggiungi utente", emoji="➕", style=discord.ButtonStyle.secondary, row=1, custom_id=f"tc_add_{channel_id}")
+        self.btn_add_user.callback = self.add_user_btn
+        self.add_item(self.btn_add_user)
+
+        self.btn_rem_user = discord.ui.Button(label="Rimuovi utente", emoji="➖", style=discord.ButtonStyle.secondary, row=1, custom_id=f"tc_rem_{channel_id}")
+        self.btn_rem_user.callback = self.remove_user_btn
+        self.add_item(self.btn_rem_user)
+
+        self.btn_transcript = discord.ui.Button(label="Trascrizione", emoji="📄", style=discord.ButtonStyle.secondary, row=1, custom_id=f"tc_trans_{channel_id}")
+        self.btn_transcript.callback = self.transcript_btn
+        self.add_item(self.btn_transcript)
 
     async def is_staff(self, interaction: discord.Interaction) -> bool:
         staff_role_id = await db.get_config(interaction.guild_id, "ticket_staff_role")
@@ -313,8 +326,7 @@ class TicketControlView(discord.ui.View):
             return False
         return True
 
-    @discord.ui.button(label="Chiudi", emoji="🔒", style=discord.ButtonStyle.secondary, row=0)
-    async def close_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def close_btn(self, interaction: discord.Interaction):
         try:
             class ConfirmClose(discord.ui.View):
                 def __init__(self, tc_view: TicketControlView):
@@ -371,9 +383,7 @@ class TicketControlView(discord.ui.View):
         except Exception as e:
             logger.error(f"Error executing close: {e}")
 
-
-    @discord.ui.button(label="Prendi in carico", emoji="🙋", style=discord.ButtonStyle.primary, row=0)
-    async def assign_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def assign_btn(self, interaction: discord.Interaction):
         try:
             if not await self.is_staff(interaction):
                 await interaction.response.send_message("Solo lo staff può prendere in carico i ticket.", ephemeral=True)
@@ -395,9 +405,9 @@ class TicketControlView(discord.ui.View):
                 else:
                     # Release
                     await db.release_ticket(self.channel_id)
-                    button.label = "Prendi in carico"
-                    button.emoji = "🙋"
-                    button.style = discord.ButtonStyle.primary
+                    self.btn_assign.label = "Prendi in carico"
+                    self.btn_assign.emoji = "🙋"
+                    self.btn_assign.style = discord.ButtonStyle.primary
 
                     embed.set_field_at(0, name="Stato", value="🟢 Aperto", inline=True)
                     embed.set_field_at(2, name="Assegnato a", value="— Nessuno —", inline=True)
@@ -406,9 +416,9 @@ class TicketControlView(discord.ui.View):
             else:
                 # Assign
                 await db.assign_ticket(self.channel_id, interaction.user.id)
-                button.label = "Rilascia"
-                button.emoji = "🔄"
-                button.style = discord.ButtonStyle.secondary
+                self.btn_assign.label = "Rilascia"
+                self.btn_assign.emoji = "🔄"
+                self.btn_assign.style = discord.ButtonStyle.secondary
 
                 embed.set_field_at(0, name="Stato", value="🟡 In elaborazione", inline=True)
                 embed.set_field_at(2, name="Assegnato a", value=interaction.user.mention, inline=True)
@@ -418,8 +428,7 @@ class TicketControlView(discord.ui.View):
             logger.error(f"Error assigning ticket: {e}")
             await interaction.response.send_message("Si è verificato un errore generico.", ephemeral=True)
 
-    @discord.ui.button(label="Priorità", emoji="⭐", style=discord.ButtonStyle.secondary, row=0)
-    async def priority_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def priority_btn(self, interaction: discord.Interaction):
         try:
             if not await self.is_staff(interaction):
                 await interaction.response.send_message("Solo lo staff può modificare la priorità.", ephemeral=True)
@@ -465,8 +474,7 @@ class TicketControlView(discord.ui.View):
             await interaction.response.send_message("Si è verificato un errore generico.", ephemeral=True)
 
 
-    @discord.ui.button(label="Aggiungi utente", emoji="➕", style=discord.ButtonStyle.secondary, row=1)
-    async def add_user_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def add_user_btn(self, interaction: discord.Interaction):
         try:
             if not await self.is_staff(interaction):
                 await interaction.response.send_message("Solo lo staff può aggiungere utenti.", ephemeral=True)
@@ -495,8 +503,7 @@ class TicketControlView(discord.ui.View):
             logger.error(f"Error add_user_btn: {e}")
             await interaction.response.send_message("Si è verificato un errore generico.", ephemeral=True)
 
-    @discord.ui.button(label="Rimuovi utente", emoji="➖", style=discord.ButtonStyle.secondary, row=1)
-    async def remove_user_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def remove_user_btn(self, interaction: discord.Interaction):
         try:
             if not await self.is_staff(interaction):
                 await interaction.response.send_message("Solo lo staff può rimuovere utenti.", ephemeral=True)
@@ -525,8 +532,7 @@ class TicketControlView(discord.ui.View):
             logger.error(f"Error remove_user_btn: {e}")
             await interaction.response.send_message("Si è verificato un errore generico.", ephemeral=True)
 
-    @discord.ui.button(label="Trascrizione", emoji="📄", style=discord.ButtonStyle.secondary, row=1)
-    async def transcript_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def transcript_btn(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
         try:
             transcript = await generate_transcript(interaction.channel)
@@ -553,7 +559,6 @@ class TicketControlView(discord.ui.View):
         except Exception as e:
             logger.error(f"Error saving transcript: {e}")
             await interaction.followup.send("Si è verificato un errore durante il salvataggio della trascrizione.", ephemeral=True)
-
 
 async def send_ticket_panel(bot: discord.Client, channel: discord.TextChannel):
     guild_id = channel.guild.id

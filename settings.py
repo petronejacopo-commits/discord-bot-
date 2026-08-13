@@ -259,6 +259,11 @@ class TicketSettingsView(discord.ui.View):
     @discord.ui.button(label="Invia pannello ticket", style=discord.ButtonStyle.primary, row=4)
     async def send_panel(self, interaction: discord.Interaction, button: discord.ui.Button):
         try:
+            categories = await db.get_categories(interaction.guild_id)
+            if not categories:
+                await interaction.response.send_message("Devi creare almeno una categoria prima di poter inviare il pannello ticket. Usa /setting → Categorie → Aggiungi categoria.", ephemeral=True)
+                return
+
             class PanelChannelSelect(discord.ui.View):
                 def __init__(self, bot):
                     super().__init__(timeout=60)
@@ -288,14 +293,49 @@ class TicketSettingsView(discord.ui.View):
 # --- CATEGORIES MODULE ---
 class AddCategoryModal(discord.ui.Modal, title='Aggiungi Categoria Ticket'):
     name = discord.ui.TextInput(label='Nome Categoria')
-    emoji = discord.ui.TextInput(label='Emoji', required=False)
     desc = discord.ui.TextInput(label='Descrizione breve', required=False)
     welcome = discord.ui.TextInput(label='Messaggio di Benvenuto custom', style=discord.TextStyle.paragraph, required=False)
 
     async def on_submit(self, interaction: discord.Interaction):
         try:
-            await db.add_category(interaction.guild_id, self.name.value, self.emoji.value, self.desc.value, self.welcome.value)
-            await interaction.response.send_message(f"Categoria {self.name.value} aggiunta.", ephemeral=True)
+            class EmojiSelectView(discord.ui.View):
+                def __init__(self, name_val, desc_val, welcome_val):
+                    super().__init__(timeout=120)
+                    self.name_val = name_val
+                    self.desc_val = desc_val
+                    self.welcome_val = welcome_val
+
+                    options = [
+                        discord.SelectOption(label="Ticket generico", emoji="🎫", value="🎫"),
+                        discord.SelectOption(label="Supporto tecnico", emoji="🛠️", value="🛠️"),
+                        discord.SelectOption(label="Pagamenti/acquisti", emoji="💰", value="💰"),
+                        discord.SelectOption(label="Segnalazioni/report", emoji="📢", value="📢"),
+                        discord.SelectOption(label="Domande generiche", emoji="❓", value="❓"),
+                        discord.SelectOption(label="Bug", emoji="🐛", value="🐛"),
+                        discord.SelectOption(label="Reclami/problemi", emoji="⚠️", value="⚠️"),
+                        discord.SelectOption(label="Gaming/community", emoji="🎮", value="🎮"),
+                        discord.SelectOption(label="Collaborazioni/partnership", emoji="🤝", value="🤝"),
+                        discord.SelectOption(label="Altro", emoji="📋", value="📋")
+                    ]
+                    self.select = discord.ui.Select(placeholder="Scegli un'emoji per la categoria", options=options)
+                    self.select.callback = self.on_select
+                    self.add_item(self.select)
+
+                async def on_select(self, inter: discord.Interaction):
+                    try:
+                        emoji_val = self.select.values[0]
+                        await db.add_category(inter.guild_id, self.name_val, emoji_val, self.desc_val, self.welcome_val)
+                        await inter.response.send_message(f"Categoria {self.name_val} aggiunta con successo.", ephemeral=True)
+                        self.stop()
+                    except Exception as e:
+                        logger.error(e)
+                        await inter.response.send_message("Errore nel salvataggio della categoria.", ephemeral=True)
+
+            await interaction.response.send_message(
+                "Seleziona l'emoji per la nuova categoria:",
+                view=EmojiSelectView(self.name.value, self.desc.value, self.welcome.value),
+                ephemeral=True
+            )
         except Exception as e:
             logger.error(e)
             await interaction.response.send_message("Errore", ephemeral=True)
