@@ -58,27 +58,17 @@ class WelcomeColorsModal(discord.ui.Modal, title='Colori Welcome Card'):
             logger.error(e)
             await interaction.response.send_message("Errore", ephemeral=True)
 
-class WelcomeSettingsView(discord.ui.View):
+class WelcomeSettingsViewPage1(discord.ui.View):
     def __init__(self, main_view):
         super().__init__(timeout=None)
-        self.add_item(BackButton(main_view))
+        self.main_view = main_view
+        self.add_item(BackButton(main_view, row=4))
 
     @discord.ui.select(cls=discord.ui.ChannelSelect, placeholder="Canale di benvenuto", channel_types=[discord.ChannelType.text])
     async def select_channel(self, interaction: discord.Interaction, select: discord.ui.ChannelSelect):
         try:
             await db.set_config(interaction.guild_id, "welcome_channel", str(select.values[0].id))
             await interaction.response.send_message(f"Canale impostato: {select.values[0].mention}", ephemeral=True)
-        except Exception as e:
-            logger.error(e)
-            await interaction.response.send_message("Errore", ephemeral=True)
-
-    @discord.ui.button(label="Attiva/Disattiva Card Grafica", style=discord.ButtonStyle.secondary)
-    async def toggle_card(self, interaction: discord.Interaction, button: discord.ui.Button):
-        try:
-            current = (await db.get_config(interaction.guild_id, "welcome_use_card", "false")).lower() == "true"
-            new_val = "false" if current else "true"
-            await db.set_config(interaction.guild_id, "welcome_use_card", new_val)
-            await interaction.response.send_message(f"Card grafica impostata su: {new_val}", ephemeral=True)
         except Exception as e:
             logger.error(e)
             await interaction.response.send_message("Errore", ephemeral=True)
@@ -100,12 +90,33 @@ class WelcomeSettingsView(discord.ui.View):
             logger.error(e)
             await interaction.response.send_message("Errore", ephemeral=True)
 
-    @discord.ui.button(label="Modifica Colori/Stili", style=discord.ButtonStyle.secondary)
+    @discord.ui.button(label="Attiva/Disattiva Card Grafica", style=discord.ButtonStyle.secondary, row=2)
+    async def toggle_card(self, interaction: discord.Interaction, button: discord.ui.Button):
+        try:
+            current = (await db.get_config(interaction.guild_id, "welcome_use_card", "false")).lower() == "true"
+            new_val = "false" if current else "true"
+            await db.set_config(interaction.guild_id, "welcome_use_card", new_val)
+            await interaction.response.send_message(f"Card grafica impostata su: {new_val}", ephemeral=True)
+        except Exception as e:
+            logger.error(e)
+            await interaction.response.send_message("Errore", ephemeral=True)
+
+    @discord.ui.button(label="Modifica Colori/Stili", style=discord.ButtonStyle.secondary, row=2)
     async def edit_colors(self, interaction: discord.Interaction, button: discord.ui.Button):
         try:
             await interaction.response.send_modal(WelcomeColorsModal())
         except Exception as e:
             logger.error(e)
+
+    @discord.ui.button(label="Avanti ➡️", style=discord.ButtonStyle.primary, row=4)
+    async def next_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.edit_message(view=WelcomeSettingsViewPage2(self.main_view))
+
+
+class WelcomeSettingsViewPage2(discord.ui.View):
+    def __init__(self, main_view):
+        super().__init__(timeout=None)
+        self.main_view = main_view
 
     @discord.ui.select(cls=discord.ui.RoleSelect, placeholder="Ruolo da pingare al benvenuto")
     async def select_ping_role(self, interaction: discord.Interaction, select: discord.ui.RoleSelect):
@@ -124,6 +135,10 @@ class WelcomeSettingsView(discord.ui.View):
         except Exception as e:
             logger.error(e)
             await interaction.response.send_message("Errore", ephemeral=True)
+
+    @discord.ui.button(label="⬅️ Indietro", style=discord.ButtonStyle.primary, row=2)
+    async def prev_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.edit_message(view=WelcomeSettingsViewPage1(self.main_view))
 
 
 # --- TICKET MODULE ---
@@ -159,11 +174,12 @@ class TicketTextModal(discord.ui.Modal, title='Testi Ticket'):
             logger.error(e)
             await interaction.response.send_message("Errore", ephemeral=True)
 
-class TicketSettingsView(discord.ui.View):
+class TicketSettingsViewPage1(discord.ui.View):
     def __init__(self, bot: discord.Client, main_view):
         super().__init__(timeout=None)
         self.bot = bot
-        self.add_item(BackButton(main_view))
+        self.main_view = main_view
+        self.add_item(BackButton(main_view, row=4))
 
     @discord.ui.select(cls=discord.ui.ChannelSelect, placeholder="Categoria Discord per Ticket", channel_types=[discord.ChannelType.category])
     async def select_category(self, interaction: discord.Interaction, select: discord.ui.ChannelSelect):
@@ -192,21 +208,32 @@ class TicketSettingsView(discord.ui.View):
             logger.error(e)
             await interaction.response.send_message("Errore", ephemeral=True)
 
-    @discord.ui.button(label="Limiti e UI", style=discord.ButtonStyle.secondary)
+    @discord.ui.button(label="Limiti e UI", style=discord.ButtonStyle.secondary, row=3)
     async def extra_settings(self, interaction: discord.Interaction, button: discord.ui.Button):
         try:
             await interaction.response.send_modal(TicketLimitModal())
         except Exception as e:
             logger.error(e)
 
-    @discord.ui.button(label="Testi Embed", style=discord.ButtonStyle.secondary)
+    @discord.ui.button(label="Testi Embed", style=discord.ButtonStyle.secondary, row=3)
     async def text_settings(self, interaction: discord.Interaction, button: discord.ui.Button):
         try:
             await interaction.response.send_modal(TicketTextModal())
         except Exception as e:
             logger.error(e)
 
-    @discord.ui.button(label="Toggle Status", style=discord.ButtonStyle.secondary)
+    @discord.ui.button(label="Avanti ➡️", style=discord.ButtonStyle.primary, row=4)
+    async def next_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.edit_message(view=TicketSettingsViewPage2(self.bot, self.main_view))
+
+
+class TicketSettingsViewPage2(discord.ui.View):
+    def __init__(self, bot: discord.Client, main_view):
+        super().__init__(timeout=None)
+        self.bot = bot
+        self.main_view = main_view
+
+    @discord.ui.button(label="Toggle Status", style=discord.ButtonStyle.secondary, row=0)
     async def toggle_status(self, interaction: discord.Interaction, button: discord.ui.Button):
         try:
             current = (await db.get_config(interaction.guild_id, "ticket_panel_show_status", "false")).lower() == "true"
@@ -217,7 +244,7 @@ class TicketSettingsView(discord.ui.View):
             logger.error(e)
             await interaction.response.send_message("Errore", ephemeral=True)
 
-    @discord.ui.button(label="Toggle Priorità", style=discord.ButtonStyle.secondary)
+    @discord.ui.button(label="Toggle Priorità", style=discord.ButtonStyle.secondary, row=0)
     async def toggle_priority(self, interaction: discord.Interaction, button: discord.ui.Button):
         try:
             current = (await db.get_config(interaction.guild_id, "ticket_priority_enabled", "false")).lower() == "true"
@@ -228,7 +255,7 @@ class TicketSettingsView(discord.ui.View):
             logger.error(e)
             await interaction.response.send_message("Errore", ephemeral=True)
 
-    @discord.ui.button(label="Toggle Auto-cleanup", style=discord.ButtonStyle.secondary)
+    @discord.ui.button(label="Toggle Auto-cleanup", style=discord.ButtonStyle.secondary, row=0)
     async def toggle_cleanup(self, interaction: discord.Interaction, button: discord.ui.Button):
         try:
             current = (await db.get_config(interaction.guild_id, "ticket_auto_cleanup", "false")).lower() == "true"
@@ -246,7 +273,8 @@ class TicketSettingsView(discord.ui.View):
             discord.SelectOption(label="Media", value="media"),
             discord.SelectOption(label="Alta", value="alta"),
             discord.SelectOption(label="Urgente", value="urgente")
-        ]
+        ],
+        row=1
     )
     async def select_priority(self, interaction: discord.Interaction, select: discord.ui.Select):
         try:
@@ -256,7 +284,7 @@ class TicketSettingsView(discord.ui.View):
             logger.error(e)
             await interaction.response.send_message("Errore", ephemeral=True)
 
-    @discord.ui.button(label="Invia pannello ticket", style=discord.ButtonStyle.primary, row=4)
+    @discord.ui.button(label="Invia pannello ticket", style=discord.ButtonStyle.success, row=2)
     async def send_panel(self, interaction: discord.Interaction, button: discord.ui.Button):
         try:
             categories = await db.get_categories(interaction.guild_id)
@@ -273,7 +301,15 @@ class TicketSettingsView(discord.ui.View):
                 async def sel(self, inter: discord.Interaction, select: discord.ui.ChannelSelect):
                     try:
                         await inter.response.defer(ephemeral=True)
-                        channel = select.values[0]
+                        channel_val = select.values[0]
+                        channel = self.bot.get_channel(channel_val.id)
+                        if not channel:
+                            try:
+                                channel = await self.bot.fetch_channel(channel_val.id)
+                            except:
+                                await inter.followup.send("Errore: impossibile risolvere il canale selezionato.", ephemeral=True)
+                                return
+
                         await send_ticket_panel(self.bot, channel)
                         await inter.followup.send(f"Pannello inviato in {channel.mention}", ephemeral=True)
                         self.stop()
@@ -287,7 +323,10 @@ class TicketSettingsView(discord.ui.View):
             await interaction.response.send_message("Seleziona in quale canale inviare il pannello dei ticket:", view=PanelChannelSelect(self.bot), ephemeral=True)
         except Exception as e:
             logger.error(e)
-            await interaction.response.send_message("Errore", ephemeral=True)
+
+    @discord.ui.button(label="⬅️ Indietro", style=discord.ButtonStyle.primary, row=2)
+    async def prev_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.edit_message(view=TicketSettingsViewPage1(self.bot, self.main_view))
 
 
 # --- CATEGORIES MODULE ---
@@ -467,7 +506,7 @@ class SettingsMenuView(discord.ui.View):
             await interaction.response.edit_message(
                 content="**⚙️ Configurazione Benvenuto**\nImposta il canale, attiva/disattiva la card e configura grafica e ruoli.",
                 embed=None,
-                view=WelcomeSettingsView(self)
+                view=WelcomeSettingsViewPage1(self)
             )
         except Exception as e:
             logger.error(e)
@@ -478,7 +517,7 @@ class SettingsMenuView(discord.ui.View):
             await interaction.response.edit_message(
                 content="**⚙️ Configurazione Ticket**\nImposta log, permessi e opzioni avanzate del sistema ticket.",
                 embed=None,
-                view=TicketSettingsView(self.bot, self)
+                view=TicketSettingsViewPage1(self.bot, self)
             )
         except Exception as e:
             logger.error(e)

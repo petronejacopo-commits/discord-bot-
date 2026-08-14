@@ -190,7 +190,7 @@ async def generate_welcome_card(member: discord.Member, config: dict) -> io.Byte
     return buffer
 
 
-async def on_member_join(member: discord.Member):
+async def _handle_member_join(member: discord.Member):
     try:
         guild_id = member.guild.id
         welcome_channel_id = await db.get_config(guild_id, "welcome_channel")
@@ -248,4 +248,6 @@ async def on_member_join(member: discord.Member):
         logger.error(f"Error in welcome module: {e}")
 
 def setup_welcomer(bot: discord.Client):
-    bot.add_listener(on_member_join, 'on_member_join')
+    @bot.event
+    async def on_member_join(member: discord.Member):
+        await _handle_member_join(member)
